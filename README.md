@@ -84,3 +84,49 @@ To run this project locally, follow these steps:
     * **Username:** `admin`
     * **Password:** `admin123`
 3.  Access the admin dashboard (once loaded) to view and manage all user-submitted reports.
+
+# File-by-File Breakdown
+
+Here is what each file is responsible for:
+
+### 1. **map.js (Map Services)**
+
+This file manages all Google Maps API integration for the entire application.
+
+* **Initialization:** `initMap` is the main entry point, responsible for loading the Google Maps API and initializing the homepage map (`initCommunityMap`).
+* **Error Handling:** Includes `showMapFallback` to display a user-friendly error message if the Google Maps API fails to load (e.g., due to a bad API key).
+* **Homepage Map:** `initCommunityMap` creates the main map on the homepage. `addSampleMarkers` is used to populate this map with sample issues (like potholes or broken streetlights) for demonstration.
+* **Geolocation:** Provides the global `useCurrentLocation` function, which uses the browser's Geolocation API to find the user's position and center the map.
+* **Styling:** Includes `getMapStyle` to automatically apply a dark or light theme to the map based on the user's application settings.
+* **Reporting Helpers:** Contains functions like `placeMarker` and `updateCoordinatesDisplay` that are used by `report.js` to allow users to drop a pin when reporting an issue.
+
+### 2. **report.js (Issue Reporting Module)**
+
+This file controls the entire "Report an Issue" modal and its logic, all encapsulated within a `ReportManager` class.
+
+* **Map Integration:** It initializes a *separate*, dedicated map inside the report modal (`initializeReportMap`). It also sets up the Google Places `Autocomplete` search bar (`initializeLocationSearch`) to work with this map.
+* **Location:** The class has its own `placeMarker` and `useCurrentLocation` methods specifically for the report modal, allowing a user to drop a pin or use their GPS to set the issue's location.
+* **Photo Upload:** Manages all photo upload logic (`handlePhotoUpload`), including validating files (max 5 images, 5MB size), generating previews, and allowing users to remove photos.
+* **Form Handling:** Manages the form submission (`handleReportSubmit`) and validation (`validateForm`) to ensure all required fields (like issue type and description) are filled.
+* **Data Submission:** The `saveReport` function collects all data (details, location, photos), saves a copy to `localStorage` as a cache/fallback, and then attempts to send the report to the Google Sheets backend via the `sheetsService`.
+* **UI Management:** Resets the form (`resetReportForm`) and closes the modal (`closeReportModal`) upon successful submission.
+
+### 3. **auth.js (Authentication)**
+
+This file handles all user session management: logging in, signing up, admin login, and logging out.
+
+* **User Login/Signup:** `handleLogin` and `handleSignup` manage the standard user forms. They are built to be resilient, attempting to communicate with the `sheetsService` (Google Sheets) backend first, but using `localStorage` as a fallback. A hardcoded `demo@civicconnect.com` user is also included for demonstration.
+* **Admin Login:** Provides a completely separate and hardcoded login flow for the administrator (`handleAdminLogin`) using the credentials `admin` / `admin123`.
+* **Session Management:** It is responsible for creating and removing all session data (like `authToken`, `userEmail`, `userRole`, and `adminToken`) from `localStorage`.
+* **Logout:** The global `logout` function clears all session data, updates the UI, and returns the user to a "guest" state.
+* **Helpers:** Includes global functions like `checkLoginStatus` and `getCurrentUser` that are used by other scripts (like `dashboard.js`) to verify if a user is logged in.
+
+### 4. **dashboard.js (User Dashboard)**
+
+This file is responsible for building and managing the personal dashboard that a logged-in user sees.
+
+* **Authentication Check:** `loadDashboard` is the main function. It first checks if a user is logged in. If not, it displays a "Please log in" prompt (`getLoginPromptHTML`). If the user is an admin, it defers to the `loadAdminDashboard()` function (from `admin.js`).
+* **Data Fetching:** `getUserIssues` is the key function that retrieves all reports from `localStorage` and filters them to find *only* the ones submitted by the currently logged-in user (by matching `userEmail`).
+* **Rendering:** It dynamically generates all the HTML for the dashboard (`getUserDashboardHTML`), which includes statistics cards (Total Issues, Pending, Resolved) and the list of issue cards (`renderIssuesList`).
+* **Admin Feedback:** When rendering issue cards, it specifically looks for and displays any `adminComment` left on an issue, allowing users to see status updates from the administrator.
+* **Interactivity:** It adds event listeners for the filter buttons (e.g., "All," "Pending," "Resolved") and provides the `viewIssue` and `viewIssuePhotos` functions so users can click to see more details or view the photos they attached.
